@@ -3,6 +3,7 @@
 <head>
     <title>Mleko Run - Telegram Edition</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0">
+    <script src="https://telegram.org/js/games.js"></script>
     <style>
         body { margin: 0; overflow: hidden; background: #70c5ce; font-family: sans-serif; }
         canvas { display: block; margin: 0 auto; background: #eee; }
@@ -25,19 +26,19 @@ canvas.height = window.innerHeight;
 
 // --- 1. SLIKE I SKINOWI ---
 let birdImg = new Image();
-birdImg.src = 'muk.png'; // Tvoj skin za pticu
+birdImg.src = 'muk.png'; 
 
 let pipeImg = new Image();
-pipeImg.src = 'stub.png'; // OVDE STAVI IME FAJLA ZA SKIN STUBOVA
+pipeImg.src = 'stub.png'; 
 
 let bgImg = new Image();
-bgImg.src = 'pozadina.png'; // OVDE STAVI IME FAJLA ZA POZADINU
+bgImg.src = 'pozadina.png'; 
 
-// --- 2. PARAMETRI IGRE (ZUMIRANO) ---
+// --- 2. PARAMETRI IGRE ---
 let bird = { 
     x: 60, 
     y: canvas.height/2, 
-    w: 100,      // Veća ptica (bilo 40)
+    w: 100,      
     h: 100, 
     gravity: 0.5, 
     lift: -9, 
@@ -47,15 +48,15 @@ let bird = {
 let pipes = [];
 let frame = 0;
 let score = 0;
-let gameSpeed = 4; // Početna brzina
-let pipeInterval = 140; // Razmak između stubova (veći broj = ređi stubovi)
+let gameSpeed = 4; 
+let pipeInterval = 140; 
 let gameOver = false;
 
 function drawBackground() {
     if (bgImg.complete && bgImg.width > 0) {
         ctx.drawImage(bgImg, 0, 0, canvas.width, canvas.height);
     } else {
-        ctx.fillStyle = "#70c5ce"; // Fallback boja ako nema slike
+        ctx.fillStyle = "#70c5ce"; 
         ctx.fillRect(0, 0, canvas.width, canvas.height);
     }
 }
@@ -65,7 +66,7 @@ function drawBird() {
 }
 
 function createPipe() {
-    let gap = 280; // Veći vertikalni razmak za "zumiran" osećaj
+    let gap = 280; 
     let minHeight = 100;
     let height = Math.floor(Math.random() * (canvas.height - gap - minHeight * 2)) + minHeight;
     pipes.push({ 
@@ -73,18 +74,16 @@ function createPipe() {
         top: height, 
         bottom: canvas.height - height - gap, 
         passed: false,
-        w: 120 // Širi stubovi
+        w: 120 
     });
 }
 
 function drawPipes() {
     pipes.forEach(p => {
         if (pipeImg.complete && pipeImg.width > 0) {
-            // Crtanje sa slikom
-            ctx.drawImage(pipeImg, p.x, 0, p.w, p.top); // Gornji
-            ctx.drawImage(pipeImg, p.x, canvas.height - p.bottom, p.w, p.bottom); // Donji
+            ctx.drawImage(pipeImg, p.x, 0, p.w, p.top); 
+            ctx.drawImage(pipeImg, p.x, canvas.height - p.bottom, p.w, p.bottom); 
         } else {
-            // Fallback dizajn ako nema slike stuba
             let grad = ctx.createLinearGradient(p.x, 0, p.x + p.w, 0);
             grad.addColorStop(0, '#2e7d32');
             grad.addColorStop(1, '#a5d6a7');
@@ -96,7 +95,6 @@ function drawPipes() {
 }
 
 function updatePipes() {
-    // Težina: Ako je score preko 50, ubrzaj igru i smanji razmak
     if (score >= 50) {
         gameSpeed = 6;
         pipeInterval = 180;
@@ -107,13 +105,11 @@ function updatePipes() {
     pipes.forEach(p => {
         p.x -= gameSpeed;
 
-        // Provera poena
         if (!p.passed && bird.x > p.x + p.w) {
             score++;
             p.passed = true;
         }
 
-        // Detekcija sudara (precizniji hitbox)
         let margin = 12; 
         if (bird.x + bird.w - margin > p.x && bird.x + margin < p.x + p.w) {
             if (bird.y + margin < p.top || bird.y + bird.h - margin > canvas.height - p.bottom) {
@@ -125,33 +121,36 @@ function updatePipes() {
     pipes = pipes.filter(p => p.x > -p.w);
 }
 
+// IZMENJENA FUNKCIJA ZA KRAJ IGRE
 function endGame() {
     gameOver = true;
+
+    // Javljanje rezultata Telegramu
+    if (typeof TelegramGameProxy !== 'undefined') {
+        // Ovo šalje trenutni skor u bazu bota. 
+        // Telegram će u grupi sam rangirati ljude po imenu, bez @ spama.
+        TelegramGameProxy.shareScore();
+    }
+
     document.getElementById("finalScore").innerText = score;
     document.getElementById("deathScreen").style.display = "block";
 }
+
 function resetGame() {
-    // Sakrij death screen
     document.getElementById("deathScreen").style.display = "none";
-    
-    // Resetuj parametre ptice
     bird.y = canvas.height / 2;
     bird.velocity = 0;
-    
-    // Resetuj mehaniku
     pipes = [];
     score = 0;
     frame = 0;
     gameSpeed = 4;
     pipeInterval = 140;
     gameOver = false;
-    
-    // Ponovo pokreni petlju
     loop();
 }
 
 function loop() {
-    if (gameOver) return; // Zaustavlja crtanje čim udariš
+    if (gameOver) return; 
     
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     
@@ -161,7 +160,6 @@ function loop() {
     drawPipes();
     updatePipes();
     
-    // UI za skor na ekranu dok igra traje
     ctx.fillStyle = "white";
     ctx.strokeStyle = "black";
     ctx.lineWidth = 3;
@@ -179,7 +177,6 @@ function updateBird() {
     if (bird.y + bird.h > canvas.height || bird.y < 0) endGame();
 }
 
-// Kontrole
 window.addEventListener("mousedown", () => bird.velocity = bird.lift);
 window.addEventListener("touchstart", (e) => {
     e.preventDefault();
