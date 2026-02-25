@@ -26,12 +26,12 @@ let birdImg = new Image(); birdImg.src = 'muk.png';
 let pipeImg = new Image(); pipeImg.src = 'stub.png'; 
 let bgImg = new Image(); bgImg.src = 'pozadina.png'; 
 
-let bird = { x: 60, y: canvas.height/2, w: 100, h: 100, gravity: 0.5, lift: -9, velocity: 0 };
-let pipes = []; let frame = 0; let score = 0; let gameSpeed = 4; let pipeInterval = 100; let currentGap = 280; let gameOver = false;
+let bird = { x: 60, y: canvas.height/2, w: 100, h: 100, gravity: 0.5, lift: -9, velocity: 0, rotation: 0 };
+let pipes = []; let frame = 0; let score = 0; let gameSpeed = 4.5; let pipeInterval = 90; let currentGap = 280; let gameOver = false;
 
 function createPipe() {
-    if (score >= 10) currentGap = 230; // Sužavanje
-    if (score >= 50) currentGap = 185; // Brutalno usko
+    if (score >= 10) currentGap = 230; 
+    if (score >= 50) currentGap = 185; 
     let minH = 100;
     let h = Math.floor(Math.random() * (canvas.height - currentGap - minH * 2)) + minH;
     pipes.push({ x: canvas.width, top: h, bottom: canvas.height - h - currentGap, passed: false, w: 120 });
@@ -40,15 +40,21 @@ function createPipe() {
 function updatePipes() {
     if (score < 10) { gameSpeed = 4.5; pipeInterval = 90; }
     else if (score < 50) { gameSpeed = 6.5; pipeInterval = 75; }
-    else { gameSpeed = 10; pipeInterval = 45; } // EKSTREMNA BRZINA I GUSTINA
+    else { gameSpeed = 10; pipeInterval = 45; } 
 
     if (frame % pipeInterval === 0) createPipe();
     pipes.forEach(p => {
         p.x -= gameSpeed;
         if (!p.passed && bird.x > p.x + p.w) { score++; p.passed = true; }
-        let m = 15;
-        if (bird.x + bird.w - m > p.x && bird.x + m < p.x + p.w) {
-            if (bird.y + m < p.top || bird.y + bird.h - m > canvas.height - p.bottom) endGame();
+        
+        // --- NOVI HITBOX (MNOGO FER-PLEJ MOD) ---
+        // Smanjujemo opasnu zonu za po 35px sa strana i 25px odozgo/odozdo
+        let hM = 35; 
+        let vM = 25; 
+        if (bird.x + bird.w - hM > p.x && bird.x + hM < p.x + p.w) {
+            if (bird.y + vM < p.top || bird.y + bird.h - vM > canvas.height - p.bottom) {
+                endGame();
+            }
         }
     });
     pipes = pipes.filter(p => p.x > -p.w);
@@ -57,6 +63,11 @@ function updatePipes() {
 function updateBird() {
     bird.velocity += bird.gravity;
     bird.y += bird.velocity;
+    
+    // Dodavanje rotacije na osnovu brzine pada
+    let rotationAngle = Math.min(Math.PI / 4, Math.max(-Math.PI / 4, bird.velocity * 0.1));
+    bird.rotation = rotationAngle;
+
     if (bird.y + bird.h > canvas.height || bird.y < 0) endGame();
 }
 
@@ -69,25 +80,56 @@ function endGame() {
 
 function resetGame() {
     document.getElementById("deathScreen").style.display = "none";
-    bird.y = canvas.height/2; bird.velocity = 0; pipes = []; score = 0; frame = 0; 
+    bird.y = canvas.height/2; bird.velocity = 0; bird.rotation = 0; pipes = []; score = 0; frame = 0; 
     gameSpeed = 4.5; pipeInterval = 90; currentGap = 280; gameOver = false; loop();
 }
 
 function loop() {
     if (gameOver) return;
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    if (bgImg.complete) ctx.drawImage(bgImg, 0, 0, canvas.width, canvas.height);
-    ctx.drawImage(birdImg, bird.x, bird.y, bird.w, bird.h);
+    
+    // 1. Pozadina
+    if (bgImg.complete && bgImg.naturalWidth !== 0) ctx.drawImage(bgImg, 0, 0, canvas.width, canvas.height);
+    else { ctx.fillStyle = "#70c5ce"; ctx.fillRect(0, 0, canvas.width, canvas.height); }
+
+    // 2. Ptica sa rotacijom
+    ctx.save();
+    ctx.translate(bird.x + bird.w / 2, bird.y + bird.h / 2);
+    ctx.rotate(bird.rotation);
+    if (birdImg.complete && birdImg.naturalWidth !== 0) {
+        ctx.drawImage(birdImg, -bird.w / 2, -bird.h / 2, bird.w, bird.h);
+    } else {
+        ctx.fillStyle = "yellow"; ctx.fillRect(-bird.w/2, -bird.h/2, bird.w, bird.h);
+    }
+    ctx.restore();
+
     updateBird();
+
+    // 3. Stubovi
     pipes.forEach(p => {
-        if (pipeImg.complete) {
-            ctx.drawImage(pipeImg, p.x, 0, p.w, p.top);
+        if (pipeImg.complete && pipeImg.naturalWidth !== 0) {
+            // Gornji stub naopako
+            ctx.save();
+            ctx.translate(p.x + p.w / 2, p.top / 2);
+            ctx.scale(1, -1);
+            ctx.drawImage(pipeImg, -p.w / 2, -p.top / 2, p.w, p.top);
+            ctx.restore();
+
+            // Donji stub normalno
             ctx.drawImage(pipeImg, p.x, canvas.height - p.bottom, p.w, p.bottom);
+        } else {
+            ctx.fillStyle = "#2e7d32";
+            ctx.fillRect(p.x, 0, p.w, p.top);
+            ctx.fillRect(p.x, canvas.height - p.bottom, p.w, p.bottom);
         }
     });
+
     updatePipes();
+    
+    // 4. Score
     ctx.fillStyle = "white"; ctx.strokeStyle = "black"; ctx.lineWidth = 3; ctx.font = "bold 50px Arial";
     ctx.strokeText(score, canvas.width/2 - 20, 80); ctx.fillText(score, canvas.width/2 - 20, 80);
+    
     frame++; requestAnimationFrame(loop);
 }
 window.addEventListener("touchstart", (e) => { e.preventDefault(); bird.velocity = bird.lift; }, {passive: false});
