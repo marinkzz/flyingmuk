@@ -67,13 +67,17 @@ function drawBird() {
 }
 
 function createPipe() {
-    let gap = 280; 
+    // Rupa se smanjuje kako score raste (početna 280, minimalna 190)
+    let currentGap = 280;
+    if (score >= 10) currentGap = 240;
+    if (score >= 50) currentGap = 190; // Ozbiljno uska rupa
+
     let minHeight = 100;
-    let height = Math.floor(Math.random() * (canvas.height - gap - minHeight * 2)) + minHeight;
+    let height = Math.floor(Math.random() * (canvas.height - currentGap - minHeight * 2)) + minHeight;
     pipes.push({ 
         x: canvas.width, 
         top: height, 
-        bottom: canvas.height - height - gap, 
+        bottom: canvas.height - height - currentGap, 
         passed: false,
         w: 120 
     });
@@ -93,21 +97,22 @@ function drawPipes() {
 }
 
 function updatePipes() {
-    // DINAMIČKA TEŽINA KOJU SI TRAŽIO:
     if (score < 10) {
         gameSpeed = 4;
         pipeInterval = 100;
     } 
     else if (score >= 10 && score < 50) {
-        gameSpeed = 5.5;
-        pipeInterval = 85; // Stubovi izlaze češće
+        gameSpeed = 6;
+        pipeInterval = 80;
     } 
     else if (score >= 50) {
-        gameSpeed = 7.5;
-        pipeInterval = 65; // Baš brzo i gusto
+        gameSpeed = 9;      // Mnogo brže (bilo 7.5)
+        pipeInterval = 55;  // Stubovi iskaču jedan za drugim (bilo 65)
     }
 
     if (frame % pipeInterval === 0) createPipe();
+    
+    // ... ostatak koda ostaje isti ...
     
     pipes.forEach(p => {
         p.x -= gameSpeed;
@@ -192,3 +197,4 @@ loop();
 </script>
 </body>
 </html>
+
