@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Mleko Run - Telegram Edition</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0">
+    <script src="https://telegram.org/js/games.js"></script>
+    <style>
+        body { margin: 0; overflow: hidden; background: #70c5ce; font-family: sans-serif; }
+        canvas { display: block; margin: 0 auto; background: #eee; }
+    </style>
+</head>
+<body>
+    <canvas id="gameCanvas"></canvas>
+<div id="deathScreen" style="display:none; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(0,0,0,0.8); color: white; padding: 30px; border-radius: 15px; text-align: center; font-family: Arial; border: 4px solid #fff;">
+    <h1 style="margin-top: 0;">IGRA GOTOVA</h1>
+    <p style="font-size: 24px;">Tvoj skor: <span id="finalScore">0</span></p>
+    <button onclick="resetGame()" style="padding: 15px 30px; font-size: 20px; font-weight: bold; background: #2e7d32; color: white; border: none; border-radius: 10px; cursor: pointer;">HELL YEAH</button>
+</div>
+<script>
+const canvas = document.getElementById("gameCanvas");
+const ctx = canvas.getContext("2d");
+canvas.width = window.innerWidth;
+canvas.height = window.innerHeight;
+
+let birdImg = new Image(); birdImg.src = 'muk.png'; 
+let pipeImg = new Image(); pipeImg.src = 'stub.png'; 
+let bgImg = new Image(); bgImg.src = 'pozadina.png'; 
+
+let bird = { x: 60, y: canvas.height/2, w: 100, h: 100, gravity: 0.5, lift: -9, velocity: 0 };
+let pipes = []; let frame = 0; let score = 0; let gameSpeed = 4; let pipeInterval = 100; let currentGap = 280; let gameOver = false;
+
+function createPipe() {
+    if (score >= 10) currentGap = 230; // Sužavanje
+    if (score >= 50) currentGap = 185; // Brutalno usko
+    let minH = 100;
+    let h = Math.floor(Math.random() * (canvas.height - currentGap - minH * 2)) + minH;
+    pipes.push({ x: canvas.width, top: h, bottom: canvas.height - h - currentGap, passed: false, w: 120 });
+}
+
+function updatePipes() {
+    if (score < 10) { gameSpeed = 4.5; pipeInterval = 90; }
+    else if (score < 50) { gameSpeed = 6.5; pipeInterval = 75; }
+    else { gameSpeed = 10; pipeInterval = 45; } // EKSTREMNA BRZINA I GUSTINA
+
+    if (frame % pipeInterval === 0) createPipe();
+    pipes.forEach(p => {
+        p.x -= gameSpeed;
+        if (!p.passed && bird.x > p.x + p.w) { score++; p.passed = true; }
+        let m = 15;
+        if (bird.x + bird.w - m > p.x && bird.x + m < p.x + p.w) {
+            if (bird.y + m < p.top || bird.y + bird.h - m > canvas.height - p.bottom) endGame();
+        }
+    });
+    pipes = pipes.filter(p => p.x > -p.w);
+}
+
+function updateBird() {
+    bird.velocity += bird.gravity;
+    bird.y += bird.velocity;
+    if (bird.y + bird.h > canvas.height || bird.y < 0) endGame();
+}
+
+function endGame() {
+    gameOver = true;
+    if (typeof TelegramGameProxy !== 'undefined') TelegramGameProxy.shareScore();
+    document.getElementById("finalScore").innerText = score;
+    document.getElementById("deathScreen").style.display = "block";
+}
+
+function resetGame() {
+    document.getElementById("deathScreen").style.display = "none";
+    bird.y = canvas.height/2; bird.velocity = 0; pipes = []; score = 0; frame = 0; 
+    gameSpeed = 4.5; pipeInterval = 90; currentGap = 280; gameOver = false; loop();
+}
+
+function loop() {
+    if (gameOver) return;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    if (bgImg.complete) ctx.drawImage(bgImg, 0, 0, canvas.width, canvas.height);
+    ctx.drawImage(birdImg, bird.x, bird.y, bird.w, bird.h);
+    updateBird();
+    pipes.forEach(p => {
+        if (pipeImg.complete) {
+            ctx.drawImage(pipeImg, p.x, 0, p.w, p.top);
+            ctx.drawImage(pipeImg, p.x, canvas.height - p.bottom, p.w, p.bottom);
+        }
+    });
+    updatePipes();
+    ctx.fillStyle = "white"; ctx.strokeStyle = "black"; ctx.lineWidth = 3; ctx.font = "bold 50px Arial";
+    ctx.strokeText(score, canvas.width/2 - 20, 80); ctx.fillText(score, canvas.width/2 - 20, 80);
+    frame++; requestAnimationFrame(loop);
+}
+window.addEventListener("touchstart", (e) => { e.preventDefault(); bird.velocity = bird.lift; }, {passive: false});
+window.addEventListener("mousedown", () => bird.velocity = bird.lift);
+loop();
+</script>
+</body>
+</html>
