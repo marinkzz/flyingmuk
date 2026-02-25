@@ -95,9 +95,10 @@ function drawPipes() {
 }
 
 function updatePipes() {
+    // Kako score raste, igra postaje brža, a stubovi još češći
     if (score >= 50) {
         gameSpeed = 6;
-        pipeInterval = 180;
+        pipeInterval = 70; // Još brži spawn za veći izazov
     }
 
     if (frame % pipeInterval === 0) createPipe();
@@ -117,6 +118,9 @@ function updatePipes() {
             }
         }
     });
+
+    pipes = pipes.filter(p => p.x > -p.w);
+}
 
     pipes = pipes.filter(p => p.x > -p.w);
 }
@@ -144,7 +148,7 @@ function resetGame() {
     score = 0;
     frame = 0;
     gameSpeed = 4;
-    pipeInterval = 140;
+    pipeInterval = 90;
     gameOver = false;
     loop();
 }
@@ -187,3 +191,4 @@ loop();
 </script>
 </body>
 </html>
+
